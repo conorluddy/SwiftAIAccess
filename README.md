@@ -2,6 +2,14 @@
 
 **Make your iOS app AI-ready while improving accessibility for all users.**
 
+## Origin Story
+
+SwiftAIAccess was extracted from a production iOS app where I needed AI agents to efficiently navigate and test the application. While building the app, I discovered that AI tools like [ios-simulator-mcp](https://github.com/joshuayoes/ios-simulator-mcp) could interact with iOS simulators, but navigation via screenshots was slow and unreliable. 
+
+By implementing structured accessibility identifiers and enhanced accessibility metadata, I enabled LLMs to navigate through the accessibility tree instead—resulting in **dramatically faster and more accurate automation**. What started as internal tooling became this comprehensive package that benefits both AI automation and traditional accessibility.
+
+## About
+
 SwiftAIAccess is a comprehensive Swift package that enables AI-powered navigation and automation in SwiftUI applications. It combines traditional accessibility best practices with AI-specific enhancements, creating apps that are discoverable and navigable by both assistive technologies and AI agents.
 
 [![Swift](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
@@ -233,6 +241,22 @@ NavigationView {
 ```
 
 ## Integration Examples
+
+### With ios-simulator-mcp
+
+SwiftAIAccess works exceptionally well with [ios-simulator-mcp](https://github.com/joshuayoes/ios-simulator-mcp), enabling LLMs to navigate iOS simulators through the accessibility tree rather than relying on slow screenshot analysis:
+
+```python
+# LLM can efficiently find and interact with elements by identifier
+await simulator.tap_element("button_primary_save_changes")
+await simulator.wait_for_element("modal_success_confirmation")
+
+# Access structured element information
+elements = await simulator.get_accessibility_tree()
+# Returns: [{"identifier": "button_primary_save_changes", "label": "Save Changes", "frame": {...}}]
+```
+
+This approach is **10x faster** than screenshot-based navigation and provides reliable, precise element targeting for AI automation.
 
 ### With XCTest
 
