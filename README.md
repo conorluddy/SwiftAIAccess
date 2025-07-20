@@ -6,6 +6,7 @@
 [![Platforms](https://img.shields.io/badge/Platforms-iOS%2015%2B%20|%20macOS%2012%2B%20|%20tvOS%2015%2B%20|%20watchOS%208%2B-blue.svg)](https://swift.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-24%2F24%20Passing-brightgreen.svg)](https://github.com/conorluddy/SwiftAIAccess)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/conorluddy/SwiftAIAccess)
 
 ## Why This Matters
 
@@ -156,7 +157,7 @@ Comprehensive debugging framework for diagnosing and fixing SwiftAIAccess integr
 - **🐛 Issues**: [Report bugs](https://github.com/conorluddy/SwiftAIAccess/issues)  
 - **🤝 Contributing**: [Contributing Guide](CONTRIBUTING.md)
 - **📢 Updates**: Follow [@conorluddy](https://github.com/conorluddy) for updates
-
+- **📗 Devin DeepWiki**: [Devin Deepwiki Docs](https://deepwiki.com/conorluddy/SwiftAIAccess)
 ## Requirements
 
 - iOS 15.0+ / macOS 12.0+ / tvOS 15.0+ / watchOS 8.0+
