@@ -112,14 +112,38 @@ public class NavigationService {
     /// - Returns: Array of matching element identifiers
     public func findElements(matching pattern: String) -> [String] {
         do {
-            let regex = try NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+            let regex = try AIAccessValidation.validateRegexPattern(pattern)
             return tracker.trackedElements.keys.filter { identifier in
                 let range = NSRange(location: 0, length: identifier.utf16.count)
                 return regex.firstMatch(in: identifier, options: [], range: range) != nil
             }
-        } catch {
-            logger.debug("Invalid regex pattern: \(pattern)")
+        } catch let error as AIAccessError {
+            logger.debug("Regex validation failed: \(error.localizedDescription)")
             return []
+        } catch {
+            logger.debug("Unexpected error with regex pattern '\(pattern)': \(error.localizedDescription)")
+            return []
+        }
+    }
+    
+    /// Find elements matching a pattern with detailed error information
+    /// - Parameter pattern: Regex pattern to match identifiers
+    /// - Returns: Result with matching identifiers or error details
+    public func findElementsValidated(matching pattern: String) -> AIAccessResult<[String]> {
+        do {
+            let regex = try AIAccessValidation.validateRegexPattern(pattern)
+            let matches = tracker.trackedElements.keys.filter { identifier in
+                let range = NSRange(location: 0, length: identifier.utf16.count)
+                return regex.firstMatch(in: identifier, options: [], range: range) != nil
+            }
+            return .success(matches)
+        } catch let error as AIAccessError {
+            logger.debug("Regex validation failed: \(error.localizedDescription)")
+            return .failure(error)
+        } catch {
+            let aiError = AIAccessError.regexError("Unexpected error", pattern: pattern)
+            logger.debug("Unexpected error with regex pattern: \(error.localizedDescription)")
+            return .failure(aiError)
         }
     }
     

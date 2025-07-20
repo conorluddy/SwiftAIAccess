@@ -35,14 +35,14 @@ As AI-powered development tools become mainstream, there's a growing need for ap
 Add SwiftAIAccess to your project in Xcode:
 
 1. Go to **File → Add Package Dependencies...**
-2. Enter the repository URL: `https://github.com/yourusername/SwiftAIAccess`
+2. Enter the repository URL: `https://github.com/conorluddy/SwiftAIAccess`
 3. Select the version you want to use
 
 Or add it to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/SwiftAIAccess", from: "1.0.0")
+    .package(url: "https://github.com/conorluddy/SwiftAIAccess", from: "1.0.0")
 ]
 ```
 
