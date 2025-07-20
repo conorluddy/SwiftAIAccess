@@ -32,51 +32,129 @@ public class CoordinateTracker: ObservableObject {
     @Published public private(set) var viewContextMetadata: [String: String] = [:]
     
     private let logger = Logger(subsystem: "com.swiftaiaccess", category: "tracking")
-    private let updateQueue = DispatchQueue(label: "com.swiftaiaccess.tracking", qos: .userInteractive)
+    private let queue = DispatchQueue(label: "com.swiftaiaccess.tracking", attributes: .concurrent)
     
     private init() {}
     
-    /// Update or add a tracked element
+    /// Update or add a tracked element (backward compatible, logs errors instead of throwing)
+    /// - Parameters:
+    ///   - identifier: Unique identifier for the element
+    ///   - frame: Frame coordinates of the element
+    ///   - context: Additional metadata for the element
     public func updateElement(
         identifier: String,
         frame: CGRect,
         context: [String: String] = [:]
     ) {
-        updateQueue.async { [weak self] in
-            guard let self = self else { return }
-            
+        do {
+            try updateElementValidated(identifier: identifier, frame: frame, context: context)
+        } catch let error as AIAccessError {
+            logger.error("Failed to update element '\(identifier)': \(error.localizedDescription)")
+            // Continue with best effort - add element anyway for backward compatibility
             let element = TrackedElement(
                 identifier: identifier,
                 frame: frame,
                 context: context,
                 timestamp: Date()
             )
-            
-            DispatchQueue.main.async {
-                self.trackedElements[identifier] = element
-            }
+            _updateElementUnsafe(element)
+        } catch {
+            logger.error("Unexpected error updating element '\(identifier)': \(error.localizedDescription)")
+            // Continue with best effort
+            let element = TrackedElement(
+                identifier: identifier,
+                frame: frame,
+                context: context,
+                timestamp: Date()
+            )
+            _updateElementUnsafe(element)
+        }
+    }
+    
+    /// Update or add a tracked element with full validation
+    /// - Parameters:
+    ///   - identifier: Unique identifier for the element
+    ///   - frame: Frame coordinates of the element
+    ///   - context: Additional metadata for the element
+    /// - Throws: `AIAccessError` if validation fails
+    public func updateElementValidated(
+        identifier: String,
+        frame: CGRect,
+        context: [String: String] = [:]
+    ) throws {
+        // Validate inputs
+        try AIAccessValidation.validateIdentifier(identifier)
+        try AIAccessValidation.validateFrame(frame)
+        try AIAccessValidation.validateContext(context)
+        
+        // Check resource limits
+        if trackedElements.count >= AIAccessValidation.maxTrackedElements && trackedElements[identifier] == nil {
+            throw AIAccessError.resourceLimitExceeded(
+                limit: AIAccessValidation.maxTrackedElements,
+                current: trackedElements.count
+            )
+        }
+        
+        let element = TrackedElement(
+            identifier: identifier,
+            frame: frame,
+            context: context,
+            timestamp: Date()
+        )
+        
+        _updateElementUnsafe(element)
+    }
+    
+    /// Internal method to update element without validation
+    private func _updateElementUnsafe(_ element: TrackedElement) {
+        // If we're already on main thread, update synchronously to support tests
+        if Thread.isMainThread {
+            trackedElements[element.identifier] = element
             
             #if DEBUG
-            self.logger.debug("📍 Updated element: \(identifier) at (\(Int(frame.midX)), \(Int(frame.midY)))")
+            logger.debug("📍 Updated element: \(element.identifier) at (\(Int(element.frame.midX)), \(Int(element.frame.midY)))")
             #endif
+        } else {
+            // Use barrier for write operations to ensure thread safety from background threads
+            queue.async(flags: .barrier) { [weak self] in
+                guard let self = self else { return }
+                
+                DispatchQueue.main.async {
+                    self.trackedElements[element.identifier] = element
+                }
+                
+                #if DEBUG
+                self.logger.debug("📍 Updated element: \(element.identifier) at (\(Int(element.frame.midX)), \(Int(element.frame.midY)))")
+                #endif
+            }
         }
     }
     
     /// Remove a tracked element
     public func removeElement(identifier: String) {
-        updateQueue.async { [weak self] in
-            DispatchQueue.main.async {
-                self?.trackedElements.removeValue(forKey: identifier)
+        if Thread.isMainThread {
+            trackedElements.removeValue(forKey: identifier)
+        } else {
+            queue.async(flags: .barrier) { [weak self] in
+                DispatchQueue.main.async {
+                    self?.trackedElements.removeValue(forKey: identifier)
+                }
             }
         }
     }
     
     /// Update the current view context
     public func updateViewContext(name: String, metadata: [String: String] = [:]) {
-        DispatchQueue.main.async { [weak self] in
-            self?.currentViewContext = name
-            self?.viewContextMetadata = metadata
-            self?.logger.info("📱 View context updated: \(name)")
+        if Thread.isMainThread {
+            currentViewContext = name
+            viewContextMetadata = metadata
+            logger.info("📱 View context updated: \(name)")
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.currentViewContext = name
+                self?.viewContextMetadata = metadata
+                self?.logger.info("📱 View context updated: \(name)")
+            }
         }
     }
     
@@ -97,10 +175,16 @@ public class CoordinateTracker: ObservableObject {
     
     /// Clear all tracked elements
     public func clearAll() {
-        DispatchQueue.main.async { [weak self] in
-            self?.trackedElements.removeAll()
-            self?.currentViewContext = nil
-            self?.viewContextMetadata.removeAll()
+        if Thread.isMainThread {
+            trackedElements.removeAll()
+            currentViewContext = nil
+            viewContextMetadata.removeAll()
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.trackedElements.removeAll()
+                self?.currentViewContext = nil
+                self?.viewContextMetadata.removeAll()
+            }
         }
     }
     
